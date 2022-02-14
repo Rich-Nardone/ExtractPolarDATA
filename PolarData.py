@@ -9,66 +9,27 @@ import os
 import pandas as pd
 from dotenv import load_dotenv   #for python-dotenv method
 load_dotenv()                    #for python-dotenv method
-
 now = datetime.datetime.now()
 year = '{:04d}'.format(now.year)
 month = '{:02d}'.format(now.month)
 day = '{:02d}'.format(now.day)
 
+POLAR_PATH =  os.environ.get('POLAR_PATH')
 POLAR_EMAIL = os.environ.get('POLAR_EMAIL')
 POLAR_PASSWORD = os.environ.get('POLAR_PASSWORD')
 DOWNLOADS_PATH = os.environ.get('DOWNLOADS_PATH')
-SESSIONS = 0
 
-Roster = ['Arthur Miller',
-        'Beck Gozdenovich',
-        'Billy Kroeger',
-        'Brandon Wasitowski',
-        'Brendan Falatko',
-        'Brendan Geissel',
-        'Charlie Robbins',
-        'Cole Ward',
-        'Collin Fogerty',
-        'Colton Johnson',
-        'Colton Jones',
-        'Darren Romaine',
-        'Devon Ford',
-        "Dominick O'Melia",
-        'Eric Sherman',
-        'Ethan Kaban',
-        'Gage Adams',
-        'Garrett Muscatella',
-        'Gavyn Willson',
-        'Guiseppe Chiovera',
-        'Isaac Vanzomeren',
-        'Jack Bowie',
-        'Jack Mahony',
-        'Jake Baumgardt',
-        'Joey Schwarz',
-        'Josh Failia',
-        'Keegan Ford',
-        'Liam Brown',
-        'Logan Hone',
-        'Lynch Raby',
-        'Matt Bowerman',
-        'Max Wilson',
-        'Myles Hickey',
-        'Nick Gutierrez',
-        'Owen Corry',
-        'Richie Nardone',
-        'Teddy Grimley',
-        'Tyler Nolan',
-        'Will Labartino',
-        'Xavier Ritter',
-        'Yanni Kalas'
-         ]
-def FindAndClick(locator,value):
+
+SESSIONS = 0
+files = {}
+def FindAndClick(driver,locator,value):
     # Find button
     button = driver.find_element(locator,value)
     # Click button
     button.click()
+    
 def setURL():
-    return f"https://teampro.polar.com/diary?period=day&date={year}-{month}-10"
+    return f"https://teampro.polar.com/diary?period=day&date={year}-{month}-{day}"
 
 def startWeb():
     chrome_options = webdriver.ChromeOptions()
@@ -88,14 +49,14 @@ def getLinks(driver):
 
     id_box.send_keys(POLAR_EMAIL)
     password_box.send_keys(POLAR_PASSWORD)
-    FindAndClick(By.ID,'login')
+    FindAndClick(driver,By.ID,'login')
 
     time.sleep(2)
 
     driver.switch_to.new_window('tab')
     driver.get(setURL())
 
-    time.sleep(2)
+    time.sleep(3)
 
     links = []
     elements = driver.find_elements(By.TAG_NAME,"a")
@@ -103,14 +64,15 @@ def getLinks(driver):
         if 'min' in e.text:
              links.append(e.get_attribute("href"))
     return links 
-def exportLinks(links):
+
+def exportLinks(driver,links):
+    time.sleep(3)
     print(str(SESSIONS),' training sessions are being downloaded')
     k = 1
     for link in links:
-        
         driver.switch_to.new_window('tab')
         driver.get(link)
-        FindAndClick(By.CLASS_NAME,'export')
+        FindAndClick(driver,By.CLASS_NAME,'export')
         time.sleep(2)
         # Find export buttons
         export_buttons = driver.find_elements(By.CLASS_NAME,'btn.btn-primary.session')
@@ -118,11 +80,9 @@ def exportLinks(links):
         for i in export_buttons:
             if i.text == 'Export as csv':
                 i.click()   
-        os.chdir(DOWNLOADS_PATH)
-        #check if file is downloaded every 2 seconds to optimize runtime.
-        #max runtime of this portion is 200 seconds. 
         print('Training session',k,'is being downloaded')
-        for z in range(0,100):
+        os.chdir(DOWNLOADS_PATH)
+        while (True):
             if len(glob.glob(f'{year}{month}10_*_Lacrosse_Rugby.csv'))>0:
                 break
             time.sleep(2)
@@ -131,31 +91,34 @@ def exportLinks(links):
 
 def formatSession(k):
     print('Training session',k,'is being reformated')
-    export_df = pd.DataFrame(Roster,columns = ['Player name'])
+    export_df = pd.read_csv(POLAR_PATH+'Roster.csv',)
     export_df[['Total distance [m]','Training load score','Muscle load', 'Cardio load']] = 0
-
     os.chdir(DOWNLOADS_PATH)
-    for file in glob.glob(f'{year}{month}10_*_Lacrosse_Rugby.csv'):
-        import_df = pd.read_csv( DOWNLOADS_PATH+file)
+    for file in glob.glob(f'{year}{month}{day}_*_Lacrosse_Rugby.csv'):
+        import_df = pd.read_csv(DOWNLOADS_PATH+file)
+    
     import_df = import_df[['Player name','Total distance [m]','Training load score','Muscle load', 'Cardio load']]
     export_df = import_df.append(export_df[~export_df['Player name'].isin(import_df['Player name'].values.tolist())])
     export_df.sort_values('Player name',inplace=True)
     export_df.reset_index(drop=True, inplace = True)
+
     #export file as excel file
+    
     excelfile = f'LAX{year}{month}{day}{k}.xlsx'
-    export_df.to_excel(r'C:\\Users\\Rich\\Desktop\\polar\\ExcelFiles\\'+excelfile, index = False)
-    print('Training session',k,' is being removed from csv files')
+    export_df.to_excel(POLAR_PATH+'ExcelFiles\\'+excelfile, index = False)
+    print('Training session',k,'is being removed from csv files')
     os.remove(DOWNLOADS_PATH+file) 
     print('Training session',k,'has been converted to EXCEL')
+    files[excelfile] = import_df.shape[0]
 
-
-driver = startWeb()
-links = getLinks(driver)
-SESSIONS = len(links)
-if(len(links)>0):
-    exportLinks(links)
-else:
-    print("No Polar data has not been uploaded today") 
-time.sleep(5)
-driver.quit() 
-print('ENDED SUCCESSFULLY')
+def Start():
+    driver = startWeb()
+    links = getLinks(driver)
+    SESSIONS = len(links)
+    if(SESSIONS>0):
+        exportLinks(driver,links)
+    else:
+        print("No Polar data has not been uploaded today") 
+    driver.quit() 
+    print('ENDED SUCCESSFULLY')
+    return files
