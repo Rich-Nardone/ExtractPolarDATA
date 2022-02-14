@@ -8,7 +8,8 @@ import glob
 import os
 import pandas as pd
 from dotenv import load_dotenv   #for python-dotenv method
-load_dotenv()                    #for python-dotenv method
+load_dotenv()      
+
 now = datetime.datetime.now()
 year = '{:04d}'.format(now.year)
 month = '{:02d}'.format(now.month)
@@ -18,6 +19,14 @@ POLAR_PATH =  os.environ.get('POLAR_PATH')
 POLAR_EMAIL = os.environ.get('POLAR_EMAIL')
 POLAR_PASSWORD = os.environ.get('POLAR_PASSWORD')
 DOWNLOADS_PATH = os.environ.get('DOWNLOADS_PATH')
+
+def CheckForSetup():
+    return os.path.exists('.env')
+
+def CreateData(user,passw,dpath,ppath):
+    f = open(".env","x")
+    f.write('POLAR_EMAIL='+user+'\nPOLAR_PASSWORD='+passw+'\nDOWNLOADS_PATH='+dpath+'\nPOLAR_PATH='+ppath)
+    return 0
 
 
 SESSIONS = 0
@@ -41,6 +50,8 @@ def startWeb():
 
 def getLinks(driver):
     driver.get(setURL())
+    driver.set_window_position(0, 0)
+    driver.set_window_size(300, 300)
     #let page load
     time.sleep(2)
     #find user and password box
@@ -90,6 +101,7 @@ def exportLinks(driver,links):
         k+=1
 
 def formatSession(k):
+    
     print('Training session',k,'is being reformated')
     export_df = pd.read_csv(POLAR_PATH+'Roster.csv',)
     export_df[['Total distance [m]','Training load score','Muscle load', 'Cardio load']] = 0
