@@ -101,7 +101,6 @@ def exportLinks(driver,links):
         k+=1
 
 def formatSession(k):
-    
     print('Training session',k,'is being reformated')
     export_df = pd.read_csv(POLAR_PATH+'Roster.csv',)
     export_df[['Total distance [m]','Training load score','Muscle load', 'Cardio load']] = 0
@@ -116,8 +115,8 @@ def formatSession(k):
 
     #export file as excel file
     
-    excelfile = f'LAX{year}{month}{day}{k}.xlsx'
-    export_df.to_excel(POLAR_PATH+'ExcelFiles\\'+excelfile, index = False)
+    excelfile = f'MLAX-{year}-{month}-{day}-Session-{k}.xlsx'
+    export_df.to_excel(POLAR_PATH+excelfile, index = False)
     print('Training session',k,'is being removed from csv files')
     os.remove(DOWNLOADS_PATH+file) 
     print('Training session',k,'has been converted to EXCEL')
