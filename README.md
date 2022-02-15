@@ -8,3 +8,9 @@ This program:
   - Exports data as CSV,
   - Cleans data
   - Exports as a XLSX file.
+
+To run this program:
+  - pip install -r requirements.txt
+
+For macusers:
+  - ~/Desktop/LacrosseExcelFiles
